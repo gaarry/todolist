@@ -1,19 +1,26 @@
 {
   "version": 2,
   "framework": null,
-  "buildCommand": "echo 'No build needed'",
-  "devCommand": "npx serve . -p 3000",
-  "installCommand": "echo 'No dependencies'",
   "outputDirectory": ".",
   "routes": [
     {
-      "src": "/api/(.*)",
-      "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      "dest": "/api/index.js"
+      "src": "/api/todos/?(.*)",
+      "headers": {
+        "x-mitm": "api-route"
+      },
+      "continue": true
     },
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "src": "/api/(.*)",
+      "dest": "/api/index.js"
+    }
+  ],
+  "headers": [
+    {
+      "source": "api/(.*)",
+      "headers": [
+        { "key": "Content-Type", "value": "application/json" }
+      ]
     }
   ]
 }
