@@ -1,3 +1,10 @@
 {
-  "outputDirectory": "."
+  "version": 2,
+  "outputDirectory": ".",
+  "routes": [
+    { "src": "/api/todos", "dest": "/api/todos.js" },
+    { "src": "/api/todos/(.*)", "dest": "/api/todos.js" },
+    { "src": "/api", "dest": "/api/todos.js" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
 }
