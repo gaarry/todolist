@@ -1,26 +1,7 @@
 {
-  "version": 2,
-  "framework": null,
+  "buildCommand": "",
   "outputDirectory": ".",
   "routes": [
-    {
-      "src": "/api/todos/?(.*)",
-      "headers": {
-        "x-mitm": "api-route"
-      },
-      "continue": true
-    },
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/index.js"
-    }
-  ],
-  "headers": [
-    {
-      "source": "api/(.*)",
-      "headers": [
-        { "key": "Content-Type", "value": "application/json" }
-      ]
-    }
+    { "src": "/api/(.*)", "dest": "/api/index.js" }
   ]
 }
