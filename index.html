@@ -592,6 +592,7 @@
 
     // Fetch todos
     async function fetchTodos() {
+      console.log("Fetching todos from:", API_URL);
       try {
         const url = currentFilter === 'all' ? API_URL : `${API_URL}?tag=${currentFilter}`;
         const res = await fetch(url);
@@ -603,7 +604,7 @@
           updateStatus(true);
         }
       } catch (e) {
-        console.error('Failed to fetch todos:', e);
+        console.error('Failed to fetch todos:', e.message, 'URL:', API_URL);
         updateStatus(false);
       }
     }
