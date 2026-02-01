@@ -505,7 +505,7 @@
   </div>
 
   <script>
-    const API_URL = '/api';
+    const API_URL = '/api/todos';
     let todos = [];
     let editingId = null;
 
@@ -633,7 +633,7 @@
       if (!todo) return;
 
       try {
-        const res = await fetch(`${API_URL}/${id}`, {
+        const res = await fetch(`/api/todos/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ completed: !todo.completed })
@@ -652,7 +652,7 @@
     // Delete todo
     async function deleteTodo(id) {
       try {
-        const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+        const res = await fetch(`/api/todos/${id}`, { method: 'DELETE' });
         const data = await res.json();
         if (data.success) {
           todos = todos.filter(t => t.id !== id);
@@ -705,7 +705,7 @@
       if (!todo) return;
 
       try {
-        const res = await fetch(`${API_URL}/${editingId}`, {
+        const res = await fetch(`/api/todos/${editingId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
