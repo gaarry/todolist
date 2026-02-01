@@ -1,12 +1,32 @@
 // Vercel Serverless API for Todo List
-// All endpoints in one file for reliable routing
+// Uses filesystem for persistence in dev, global for production
 
-// In-memory storage
-let todos = [
-  { id: '1', text: 'Welcome to Dream List! 🎯', priority: 'medium', completed: false, createdAt: Date.now(), source: 'system' },
-  { id: '2', text: 'Click checkbox to complete tasks ✓', priority: 'low', completed: false, createdAt: Date.now(), source: 'system' },
-  { id: '3', text: 'OpenClaw tasks auto-appear here 🤖', priority: 'high', completed: false, createdAt: Date.now(), source: 'system' }
-];
+import { readFileSync, writeFileSync, existsSync } from 'fs';
+
+const DATA_FILE = '/tmp/todos.json';
+
+// Initialize storage
+function getStorage() {
+  if (existsSync(DATA_FILE)) {
+    try {
+      const data = readFileSync(DATA_FILE, 'utf-8');
+      return JSON.parse(data);
+    } catch (e) {}
+  }
+  return [
+    { id: '1', text: 'Welcome to Dream List! 🎯', priority: 'medium', completed: false, createdAt: Date.now(), source: 'system' },
+    { id: '2', text: 'Click checkbox to complete tasks ✓', priority: 'low', completed: false, createdAt: Date.now(), source: 'system' },
+    { id: '3', text: 'OpenClaw tasks auto-appear here 🤖', priority: 'high', completed: false, createdAt: Date.now(), source: 'system' }
+  ];
+}
+
+function saveStorage(todos) {
+  try {
+    writeFileSync(DATA_FILE, JSON.stringify(todos, null, 2));
+  } catch (e) {
+    // Ignore write errors in production
+  }
+}
 
 // Helper functions
 function json(data, status = 200) {
@@ -20,17 +40,16 @@ function error(message, status = 400) {
   return json({ success: false, error: message }, status);
 }
 
-// GET /api - List all todos
+// GET /api
 export async function GET(request) {
   const url = new URL(request.url);
   const path = url.pathname.replace('/api', '');
+  const todos = getStorage();
   
-  // /api/todos or /api/
   if (path === '/todos' || path === '/' || path === '') {
     return json({ success: true, data: todos, stats: { total: todos.length, completed: todos.filter(t => t.completed).length, pending: todos.filter(t => !t.completed).length } });
   }
   
-  // /api/todos/:id
   const match = path.match(/^\/todos\/(.+)$/);
   if (match) {
     const id = match[1];
@@ -42,7 +61,7 @@ export async function GET(request) {
   return error('Not found', 404);
 }
 
-// POST /api/todos - Create todo
+// POST /api/todos
 export async function POST(request) {
   const url = new URL(request.url);
   const path = url.pathname.replace('/api', '');
@@ -57,6 +76,7 @@ export async function POST(request) {
       return error('Text is required', 400);
     }
     
+    const todos = getStorage();
     const todo = {
       id: Date.now().toString(36) + Math.random().toString(36).substr(2),
       text: body.text.trim(),
@@ -68,13 +88,14 @@ export async function POST(request) {
     };
     
     todos.unshift(todo);
+    saveStorage(todos);
     return json({ success: true, data: todo }, 201);
   } catch (e) {
     return error('Invalid request body', 400);
   }
 }
 
-// PUT /api/todos/:id - Update todo
+// PUT /api/todos/:id
 export async function PUT(request) {
   const url = new URL(request.url);
   const path = url.pathname.replace('/api', '');
@@ -83,6 +104,7 @@ export async function PUT(request) {
   if (!match) return error('Not found', 404);
   
   const id = match[1];
+  let todos = getStorage();
   const todoIndex = todos.findIndex(t => t.id === id);
   
   if (todoIndex === -1) {
@@ -104,13 +126,14 @@ export async function PUT(request) {
     }
     todos[todoIndex].updatedAt = Date.now();
     
+    saveStorage(todos);
     return json({ success: true, data: todos[todoIndex] });
   } catch (e) {
     return error('Invalid request', 400);
   }
 }
 
-// DELETE /api/todos/:id - Delete todo
+// DELETE /api/todos/:id
 export async function DELETE(request) {
   const url = new URL(request.url);
   const path = url.pathname.replace('/api', '');
@@ -119,6 +142,7 @@ export async function DELETE(request) {
   if (!match) return error('Not found', 404);
   
   const id = match[1];
+  let todos = getStorage();
   const todoIndex = todos.findIndex(t => t.id === id);
   
   if (todoIndex === -1) {
@@ -126,6 +150,7 @@ export async function DELETE(request) {
   }
   
   const deleted = todos.splice(todoIndex, 1)[0];
+  saveStorage(todos);
   return json({ success: true, data: deleted });
 }
 
