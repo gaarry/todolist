@@ -1378,7 +1378,7 @@
 
     document.getElementById('modalSave').addEventListener('click', async () => {
       if (!editingId) return;
-      
+
       const todo = todos.find(t => t.id === editingId);
       if (!todo) return;
 
@@ -1389,12 +1389,21 @@
       const oldText = todo.text;
       const oldPriority = todo.priority;
       const oldDueDate = todo.dueDate;
-      
+
+      // 安全转换日期
+      let newDueDateISO = null;
+      if (newDueDate) {
+        const dateObj = new Date(newDueDate);
+        if (!isNaN(dateObj.getTime())) {
+          newDueDateISO = dateObj.toISOString();
+        }
+      }
+
+      // 乐观更新
       todo.text = newText;
       todo.priority = newPriority;
-      // 修复时区问题：datetime-local 是本地时间，需要正确转换
-      todo.dueDate = newDueDate ? new Date(newDueDate).toISOString() : null;
-      
+      todo.dueDate = newDueDateISO;
+
       renderTodos();
       closeModal();
       hapticFeedback('light');
@@ -1406,18 +1415,28 @@
           body: JSON.stringify({
             text: newText,
             priority: newPriority,
-            dueDate: todo.dueDate
+            dueDate: newDueDateISO
           })
         });
+
+        if (!res.ok) {
+          throw new Error('API error: ' + res.status);
+        }
+
         const data = await res.json();
-        if (!data.success) {
-          todo.text = oldText;
-          todo.priority = oldPriority;
-          todo.dueDate = oldDueDate;
-          renderTodos();
+
+        if (data.success && data.data) {
+          // 用服务器返回的数据更新本地
+          const serverDueDate = data.data.dueDate;
+          const localTodo = todos.find(t => t.id === editingId);
+          if (localTodo) {
+            localTodo.dueDate = serverDueDate;
+            renderTodos();
+          }
         }
       } catch (e) {
         console.error('Failed to update todo:', e);
+        // 回滚
         todo.text = oldText;
         todo.priority = oldPriority;
         todo.dueDate = oldDueDate;
