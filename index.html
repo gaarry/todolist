@@ -629,12 +629,30 @@
       pendingCount.textContent = total - completed;
     }
 
-    // Add todo
+    // Add todo (乐观更新)
     addForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const text = taskInput.value.trim();
       if (!text) return;
 
+      // 创建临时 todo（乐观更新）
+      const tempId = 'temp-' + Date.now();
+      const tempTodo = {
+        id: tempId,
+        text: text,
+        priority: 'medium',
+        completed: false,
+        createdAt: Date.now(),
+        tag: 'user'
+      };
+
+      // 立即添加到列表
+      todos.unshift(tempTodo);
+      renderTodos();
+      updateStats();
+      taskInput.value = '';
+
+      // 后台发送 API 请求
       try {
         const res = await fetch(API_URL, {
           method: 'POST',
@@ -643,50 +661,86 @@
         });
         const data = await res.json();
         if (data.success) {
-          todos.unshift(data.data);
+          // 用真实数据替换临时 todo
+          const index = todos.findIndex(t => t.id === tempId);
+          if (index !== -1) {
+            todos[index] = data.data;
+            renderTodos();
+          }
+        } else {
+          // 如果失败，移除临时 todo
+          todos = todos.filter(t => t.id !== tempId);
           renderTodos();
           updateStats();
-          taskInput.value = '';
         }
       } catch (e) {
         console.error('Failed to add todo:', e);
+        // 失败时移除临时 todo
+        todos = todos.filter(t => t.id !== tempId);
+        renderTodos();
+        updateStats();
       }
     });
 
-    // Toggle todo
+    // Toggle todo (乐观更新)
     async function toggleTodo(id) {
       const todo = todos.find(t => t.id === id);
       if (!todo) return;
 
+      // 立即乐观更新 UI
+      const wasCompleted = todo.completed;
+      todo.completed = !wasCompleted;
+      renderTodos();
+      updateStats();
+
+      // 后台发送 API 请求
       try {
         const res = await fetch(`${API_URL}/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ completed: !todo.completed })
+          body: JSON.stringify({ completed: !wasCompleted })
         });
         const data = await res.json();
-        if (data.success) {
-          todo.completed = data.data.completed;
+        if (!data.success) {
+          // 如果失败，回滚
+          todo.completed = wasCompleted;
           renderTodos();
           updateStats();
         }
       } catch (e) {
         console.error('Failed to toggle todo:', e);
+        // 回滚
+        todo.completed = wasCompleted;
+        renderTodos();
+        updateStats();
       }
     }
 
-    // Delete todo
+    // Delete todo (乐观更新)
     async function deleteTodo(id) {
+      const todoIndex = todos.findIndex(t => t.id === id);
+      if (todoIndex === -1) return;
+      
+      // 立即乐观更新 UI
+      const deleted = todos.splice(todoIndex, 1)[0];
+      renderTodos();
+      updateStats();
+
+      // 后台发送 API 请求
       try {
         const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
         const data = await res.json();
-        if (data.success) {
-          todos = todos.filter(t => t.id !== id);
+        if (!data.success) {
+          // 如果失败，恢复
+          todos.splice(todoIndex, 0, deleted);
           renderTodos();
           updateStats();
         }
       } catch (e) {
         console.error('Failed to delete todo:', e);
+        todos.splice(todoIndex, 0, deleted);
+        renderTodos();
+        updateStats();
       }
     }
 
@@ -740,24 +794,39 @@
       const todo = todos.find(t => t.id === editingId);
       if (!todo) return;
 
+      const newText = document.getElementById('modalText').value.trim();
+      const newPriority = document.getElementById('modalPriority').value;
+
+      // 乐观更新 UI
+      const oldText = todo.text;
+      const oldPriority = todo.priority;
+      todo.text = newText;
+      todo.priority = newPriority;
+      renderTodos();
+      closeModal();
+
+      // 后台发送 API 请求
       try {
         const res = await fetch(`${API_URL}/${editingId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            text: document.getElementById('modalText').value,
-            priority: document.getElementById('modalPriority').value
+            text: newText,
+            priority: newPriority
           })
         });
         const data = await res.json();
-        if (data.success) {
-          todo.text = data.data.text;
-          todo.priority = data.data.priority;
+        if (!data.success) {
+          // 失败回滚
+          todo.text = oldText;
+          todo.priority = oldPriority;
           renderTodos();
-          closeModal();
         }
       } catch (e) {
         console.error('Failed to update todo:', e);
+        todo.text = oldText;
+        todo.priority = oldPriority;
+        renderTodos();
       }
     });
 
