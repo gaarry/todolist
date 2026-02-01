@@ -4,9 +4,9 @@
   "description": "A beautiful task management app integrated with OpenClaw",
   "main": "api/index.js",
   "scripts": {
-    "dev": "npx vercel dev",
+    "dev": "npx serve . -p 3000",
     "build": "echo 'No build step required'",
-    "start": "npx vercel dev"
+    "start": "npx serve . -p 3000"
   },
   "keywords": ["todo", "task", "openclaw", "vercel"],
   "license": "MIT"
