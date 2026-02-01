@@ -7,6 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <style>
+    /* 浅色模式（默认） */
     :root {
       --system-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', sans-serif;
       --color-label: #8e8e93;
@@ -20,6 +21,28 @@
       --color-bg: #ffffff;
       --color-separator: #c6c6c8;
       --sidebar-width: 320px;
+      --color-card: #ffffff;
+      --color-input-bg: #ffffff;
+      --color-modal-bg: #ffffff;
+      --shadow-modal: rgba(0, 0, 0, 0.15);
+    }
+
+    /* 深色模式 */
+    [data-theme="dark"] {
+      --color-label: #8e8e93;
+      --color-secondary: #2c2c2e;
+      --color-tertiary: #48484a;
+      --color-system-blue: #0a84ff;
+      --color-system-orange: #ff9f0a;
+      --color-system-green: #30d158;
+      --color-system-red: #ff453a;
+      --color-text: #ffffff;
+      --color-bg: #000000;
+      --color-separator: #38383a;
+      --color-card: #1c1c1e;
+      --color-input-bg: #1c1c1e;
+      --color-modal-bg: #1c1c1e;
+      --shadow-modal: rgba(0, 0, 0, 0.5);
     }
 
     * {
@@ -34,6 +57,7 @@
       color: var(--color-text);
       min-height: 100vh;
       -webkit-font-smoothing: antialiased;
+      transition: background 0.3s ease, color 0.3s ease;
     }
 
     .container {
@@ -47,11 +71,39 @@
       margin-bottom: 24px;
     }
 
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2px;
+    }
+
     .header h1 {
       font-size: 34px;
       font-weight: 700;
       letter-spacing: 0.02em;
-      margin-bottom: 2px;
+    }
+
+    .theme-toggle {
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: var(--color-secondary);
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-text);
+      transition: all 0.2s ease;
+    }
+
+    .theme-toggle:hover {
+      background: var(--color-tertiary);
+    }
+
+    [data-theme="dark"] .theme-toggle {
+      background: var(--color-tertiary);
     }
 
     .date {
@@ -62,12 +114,13 @@
 
     /* Add form */
     .add-form {
-      background: var(--color-bg);
+      background: var(--color-input-bg);
       padding: 12px 16px;
       margin-bottom: 20px;
       display: flex;
       align-items: center;
       gap: 12px;
+      border-radius: 12px;
     }
 
     .add-checkbox {
@@ -236,17 +289,17 @@
     }
 
     .priority-high {
-      background: #ffebea;
+      background: rgba(255, 59, 48, 0.15);
       color: var(--color-system-red);
     }
 
     .priority-medium {
-      background: #fff8e6;
+      background: rgba(255, 149, 0, 0.15);
       color: var(--color-system-orange);
     }
 
     .priority-low {
-      background: #e5f2ff;
+      background: rgba(0, 122, 255, 0.15);
       color: var(--color-system-blue);
     }
 
@@ -305,6 +358,10 @@
       margin-bottom: 8px;
     }
 
+    [data-theme="dark"] .progress-bar {
+      background: var(--color-tertiary);
+    }
+
     .progress-fill {
       height: 100%;
       background: var(--color-system-blue);
@@ -342,6 +399,10 @@
       border: 0.5px solid var(--color-separator);
     }
 
+    [data-theme="dark"] .connection-status {
+      background: rgba(28, 28, 30, 0.9);
+    }
+
     .status-dot {
       width: 6px;
       height: 6px;
@@ -377,12 +438,12 @@
     }
 
     .modal {
-      background: var(--color-bg);
+      background: var(--color-modal-bg);
       border-radius: 14px;
       padding: 24px;
       width: calc(100% - 32px);
       max-width: 400px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+      box-shadow: 0 20px 60px var(--shadow-modal);
       animation: modalIn 0.25s ease;
     }
 
@@ -415,9 +476,14 @@
       border: 0.5px solid var(--color-separator);
       border-radius: 8px;
       font-size: 17px;
-      background: var(--color-bg);
+      background: var(--color-input-bg);
       color: var(--color-text);
       -webkit-appearance: none;
+    }
+
+    [data-theme="dark"] .modal-field input,
+    [data-theme="dark"] .modal-field select {
+      border-color: var(--color-tertiary);
     }
 
     .modal-field input:focus,
@@ -488,7 +554,14 @@
 <body>
   <div class="container">
     <header class="header">
-      <h1>提醒事项</h1>
+      <div class="header-top">
+        <h1>提醒事项</h1>
+        <button class="theme-toggle" id="themeToggle" title="切换深色模式">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path id="themeIcon" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+      </div>
       <p class="date" id="currentDate"></p>
     </header>
 
@@ -896,6 +969,58 @@
       return div.innerHTML;
     }
 
+    // ==================== 深色模式 ====================
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon = document.getElementById('themeIcon');
+
+    // 检测系统主题偏好
+    function getSystemTheme() {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    // 获取保存的主题设置
+    function getSavedTheme() {
+      const saved = localStorage.getItem('theme');
+      if (saved) return saved;
+      return getSystemTheme();
+    }
+
+    // 应用主题
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+      
+      // 更新图标
+      if (theme === 'dark') {
+        themeIcon.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
+      } else {
+        themeIcon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
+      }
+    }
+
+    // 切换主题
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'light';
+      const newTheme = current === 'dark' ? 'light' : 'dark';
+      applyTheme(newTheme);
+    }
+
+    // 初始化主题
+    applyTheme(getSavedTheme());
+
+    // 监听系统主题变化
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      // 只有当用户没有手动设置过主题时才跟随系统
+      if (!localStorage.getItem('theme')) {
+        applyTheme(e.matches ? 'dark' : 'light');
+      }
+    });
+
+    // 点击切换
+    themeToggle.addEventListener('click', toggleTheme);
+
+    // ==================== 其他功能 ====================
+    
     // Poll for changes
     setInterval(fetchTodos, 10000);
 
