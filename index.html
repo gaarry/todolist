@@ -509,9 +509,20 @@
     let todos = [];
     let editingId = null;
 
-    // DOM elements
-    const todoList = document.getElementById('todoList');
-    const addForm = document.getElementById('addForm');
+    // Debug: Log all element lookups
+    const elements = {};
+    const neededIds = ['todoList', 'addForm', 'taskInput', 'prioritySelect', 'progressFill', 'completedCount', 'pendingCount', 'emptyState', 'clearCompleted', 'statusDot', 'statusText', 'modalOverlay', 'modalTitle', 'modalText', 'modalPriority', 'modalStatus', 'modalDelete', 'modalCancel', 'modalSave', 'addCheckbox'];
+    
+    neededIds.forEach(id => {
+      elements[id] = document.getElementById(id);
+      if (!elements[id]) {
+        console.error('Missing element:', id);
+      }
+    });
+
+    // Use elements from cache
+    const todoList = elements.todoList;
+    const addForm = elements.addForm;
     const taskInput = document.getElementById('taskInput');
     const prioritySelect = document.getElementById('prioritySelect');
     const progressFill = document.getElementById('progressFill');
