@@ -1,0 +1,13 @@
+{
+  "name": "dream-list",
+  "version": "1.0.0",
+  "description": "A beautiful task management app integrated with OpenClaw",
+  "main": "api/index.js",
+  "scripts": {
+    "dev": "npx vercel dev",
+    "build": "echo 'No build step required'",
+    "start": "npx vercel dev"
+  },
+  "keywords": ["todo", "task", "openclaw", "vercel"],
+  "license": "MIT"
+}
