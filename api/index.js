@@ -1,59 +1,80 @@
 // Vercel Serverless API for Todo List
-// Uses Upstash Redis for persistence
+// Uses GitHub Gist for persistent storage
 
-// Check if Upstash is configured
-const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
-const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const GIST_ID = process.env.GIST_ID || 'aabff1940df8f8666f76584089a682fd';
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
-// In-memory fallback for development without Redis
-let memoryTodos = [
+// Initial sample todos
+const DEFAULT_TODOS = [
   { id: '1', text: 'Welcome to Reminders!', priority: 'medium', completed: false, createdAt: Date.now(), source: 'system' },
   { id: '2', text: 'Click checkbox to complete', priority: 'low', completed: false, createdAt: Date.now(), source: 'system' },
   { id: '3', text: 'Tasks sync with OpenClaw 🤖', priority: 'high', completed: false, createdAt: Date.now(), source: 'system' }
 ];
 
-// Redis client (lazy init)
-let redis = null;
-function getRedis() {
-  if (!redis && UPSTASH_URL && UPSTASH_TOKEN) {
-    redis = {
-      async get(key) {
-        const res = await fetch(`${UPSTASH_URL}/get/todos`, {
-          headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` }
-        });
-        const data = await res.json();
-        return data.result;
-      },
-      async set(key, value) {
-        await fetch(`${UPSTASH_URL}/set/todos`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${UPSTASH_TOKEN}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ value })
-        });
-      }
-    };
+// GitHub API helper
+async function fetchGist() {
+  const url = `https://api.github.com/gists/${GIST_ID}`;
+  const headers = {
+    Accept: 'application/vnd.github.v3+json',
+    ...(GITHUB_TOKEN ? { Authorization: `token ${GITHUB_TOKEN}` } : {})
+  };
+  
+  try {
+    const res = await fetch(url, { headers });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const content = data.files?.['todos.json']?.content;
+    return content ? JSON.parse(content) : null;
+  } catch (e) {
+    console.error('Failed to fetch gist:', e);
+    return null;
   }
-  return redis;
 }
 
-// Storage functions
+async function saveGist(todos) {
+  if (!GITHUB_TOKEN) {
+    console.log('GITHUB_TOKEN not configured, using memory only');
+    return false;
+  }
+  
+  const url = `https://api.github.com/gists/${GIST_ID}`;
+  const headers = {
+    Accept: 'application/vnd.github.v3+json',
+    Authorization: `token ${GITHUB_TOKEN}`,
+    'Content-Type': 'application/json'
+  };
+  
+  const body = JSON.stringify({
+    description: 'Dream List persistent storage',
+    public: false,
+    files: {
+      'todos.json': { content: JSON.stringify(todos, null, 2) }
+    }
+  });
+  
+  try {
+    const res = await fetch(url, { method: 'PATCH', headers, body });
+    return res.ok;
+  } catch (e) {
+    console.error('Failed to save gist:', e);
+    return false;
+  }
+}
+
+// Storage with Gist fallback
+let memoryTodos = [...DEFAULT_TODOS];
+
 async function getStorage() {
-  const r = getRedis();
-  if (r) {
-    const data = await r.get('todos');
-    if (data) return JSON.parse(data);
+  const gistTodos = await fetchGist();
+  if (gistTodos && Array.isArray(gistTodos) && gistTodos.length > 0) {
+    return gistTodos;
   }
   return [...memoryTodos];
 }
 
 async function saveStorage(todos) {
-  const r = getRedis();
-  if (r) {
-    await r.set('todos', JSON.stringify(todos));
-  } else {
+  const saved = await saveGist(todos);
+  if (!saved) {
     memoryTodos = todos;
   }
 }
