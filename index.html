@@ -6,6 +6,7 @@
   <title>提醒事项</title>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="format-detection" content="telephone=no">
   <style>
     /* 浅色模式（默认） */
     :root {
@@ -58,6 +59,7 @@
       min-height: 100vh;
       -webkit-font-smoothing: antialiased;
       transition: background 0.3s ease, color 0.3s ease;
+      overflow-x: hidden;
     }
 
     .container {
@@ -84,7 +86,12 @@
       letter-spacing: 0.02em;
     }
 
-    .theme-toggle {
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .icon-btn {
       width: 36px;
       height: 36px;
       border: none;
@@ -98,11 +105,16 @@
       transition: all 0.2s ease;
     }
 
-    .theme-toggle:hover {
+    .icon-btn:hover {
       background: var(--color-tertiary);
     }
 
-    [data-theme="dark"] .theme-toggle {
+    .icon-btn.active {
+      background: var(--color-system-blue);
+      color: white;
+    }
+
+    [data-theme="dark"] .icon-btn {
       background: var(--color-tertiary);
     }
 
@@ -110,6 +122,57 @@
       font-size: 13px;
       color: var(--color-label);
       font-weight: 500;
+    }
+
+    /* Search bar */
+    .search-bar {
+      display: none;
+      background: var(--color-input-bg);
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      border-radius: 12px;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .search-bar.active {
+      display: flex;
+    }
+
+    .search-icon {
+      color: var(--color-label);
+      flex-shrink: 0;
+    }
+
+    .search-input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-size: 17px;
+      color: var(--color-text);
+      outline: none;
+    }
+
+    .search-input::placeholder {
+      color: var(--color-label);
+    }
+
+    .search-clear {
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: var(--color-secondary);
+      border-radius: 50%;
+      color: var(--color-label);
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .search-clear.visible {
+      display: flex;
     }
 
     /* Add form */
@@ -121,6 +184,11 @@
       align-items: center;
       gap: 12px;
       border-radius: 12px;
+      transition: box-shadow 0.2s ease;
+    }
+
+    .add-form:focus-within {
+      box-shadow: 0 0 0 2px var(--color-system-blue);
     }
 
     .add-checkbox {
@@ -150,6 +218,35 @@
     .task-input::placeholder {
       color: var(--color-label);
     }
+
+    /* Priority selector in add form */
+    .priority-selector {
+      display: flex;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .add-form:focus-within .priority-selector {
+      opacity: 1;
+    }
+
+    .priority-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid var(--color-tertiary);
+      transition: all 0.2s;
+    }
+
+    .priority-dot.selected {
+      border-color: transparent;
+    }
+
+    .priority-dot[data-priority="low"] { background: var(--color-system-blue); }
+    .priority-dot[data-priority="medium"] { background: var(--color-system-orange); }
+    .priority-dot[data-priority="high"] { background: var(--color-system-red); }
 
     /* Filter tabs */
     .filter-tabs {
@@ -216,6 +313,37 @@
     /* Todo list */
     .todo-list {
       list-style: none;
+      position: relative;
+    }
+
+    /* Pull to refresh indicator */
+    .pull-refresh {
+      position: absolute;
+      top: -60px;
+      left: 0;
+      right: 0;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--color-label);
+      font-size: 14px;
+      transition: opacity 0.2s;
+    }
+
+    .pull-refresh.spinning svg {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .pull-refresh.hidden {
+      opacity: 0;
+      pointer-events: none;
     }
 
     .todo-item {
@@ -225,6 +353,7 @@
       border-bottom: 0.5px solid var(--color-separator);
       gap: 12px;
       animation: slideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+      touch-action: pan-x;
     }
 
     .todo-item:last-child {
@@ -274,10 +403,38 @@
       border-radius: 50%;
     }
 
-    .todo-text {
+    .todo-content {
       flex: 1;
+      min-width: 0;
+    }
+
+    .todo-text {
       font-size: 17px;
       line-height: 1.4;
+      word-break: break-word;
+    }
+
+    .todo-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--color-label);
+    }
+
+    .todo-due-date {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .todo-due-date.overdue {
+      color: var(--color-system-red);
+    }
+
+    .todo-due-date.urgent {
+      color: var(--color-system-orange);
     }
 
     .todo-priority {
@@ -317,9 +474,11 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      flex-shrink: 0;
     }
 
-    .todo-item:hover .delete-btn {
+    .todo-item:hover .delete-btn,
+    .todo-item.touch-active .delete-btn {
       opacity: 1;
     }
 
@@ -374,11 +533,18 @@
       gap: 16px;
       font-size: 13px;
       color: var(--color-label);
+      flex-wrap: wrap;
     }
 
     .stats span {
       font-weight: 500;
       color: var(--color-text);
+    }
+
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
 
     /* Connection status */
@@ -397,6 +563,7 @@
       border-radius: 20px;
       box-shadow: 0 2px 12px rgba(0,0,0,0.08);
       border: 0.5px solid var(--color-separator);
+      z-index: 90;
     }
 
     [data-theme="dark"] .connection-status {
@@ -416,6 +583,42 @@
 
     .status-dot.disconnected {
       background: var(--color-system-red);
+    }
+
+    /* Undo toast */
+    .undo-toast {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--color-card);
+      color: var(--color-text);
+      padding: 12px 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      z-index: 100;
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .undo-toast.visible {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .undo-toast button {
+      background: var(--color-system-blue);
+      color: white;
+      border: none;
+      padding: 6px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
     }
 
     /* Modal */
@@ -556,14 +759,34 @@
     <header class="header">
       <div class="header-top">
         <h1>提醒事项</h1>
-        <button class="theme-toggle" id="themeToggle" title="切换深色模式">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path id="themeIcon" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-          </svg>
-        </button>
+        <div class="header-actions">
+          <button class="icon-btn" id="searchToggle" title="搜索">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="M21 21l-4.35-4.35"></path>
+            </svg>
+          </button>
+          <button class="icon-btn" id="themeToggle" title="切换深色模式">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path id="themeIcon" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </button>
+        </div>
       </div>
       <p class="date" id="currentDate"></p>
     </header>
+
+    <!-- Search bar -->
+    <div class="search-bar" id="searchBar">
+      <span class="search-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="M21 21l-4.35-4.35"></path>
+        </svg>
+      </span>
+      <input type="text" class="search-input" id="searchInput" placeholder="搜索提醒事项…" />
+      <button class="search-clear" id="searchClear">×</button>
+    </div>
 
     <!-- Progress -->
     <div class="progress-container">
@@ -571,8 +794,10 @@
         <div class="progress-fill" id="progressFill" style="width: 0%"></div>
       </div>
       <div class="stats">
-        <div>已完成 <span id="completedCount">0</span></div>
-        <div>待办 <span id="pendingCount">0</span></div>
+        <div class="stat-item">已完成 <span id="completedCount">0</span></div>
+        <div class="stat-item">待办 <span id="pendingCount">0</span></div>
+        <div class="stat-item">高优先 <span id="highPriorityCount">0</span></div>
+        <div class="stat-item">完成率 <span id="completionRate">0%</span></div>
       </div>
     </div>
 
@@ -580,6 +805,11 @@
     <form class="add-form" id="addForm">
       <div class="add-checkbox" id="addCheckbox"></div>
       <input type="text" class="task-input" id="taskInput" placeholder="新提醒事项…" />
+      <div class="priority-selector">
+        <div class="priority-dot" data-priority="low" title="低优先级"></div>
+        <div class="priority-dot selected" data-priority="medium" title="中优先级"></div>
+        <div class="priority-dot" data-priority="high" title="高优先级"></div>
+      </div>
     </form>
 
     <!-- Filter tabs -->
@@ -595,7 +825,15 @@
       <button class="clear-btn" id="clearCompleted">清除已完成</button>
     </div>
 
-    <ul class="todo-list" id="todoList"></ul>
+    <ul class="todo-list" id="todoList">
+      <div class="pull-refresh hidden" id="pullRefresh">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6M1 20v-6h6"></path>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        <span>下拉刷新</span>
+      </div>
+    </ul>
     
     <div class="empty-state" id="emptyState" style="display: none;">
       <div class="icon">📋</div>
@@ -607,6 +845,12 @@
   <div class="connection-status">
     <div class="status-dot disconnected" id="statusDot"></div>
     <span id="statusText">同步中…</span>
+  </div>
+
+  <!-- Undo toast -->
+  <div class="undo-toast" id="undoToast">
+    <span>已删除</span>
+    <button id="undoBtn">撤销</button>
   </div>
 
   <!-- Detail Modal -->
@@ -626,6 +870,10 @@
         </select>
       </div>
       <div class="modal-field">
+        <label>截止日期</label>
+        <input type="datetime-local" id="modalDueDate" />
+      </div>
+      <div class="modal-field">
         <label>状态</label>
         <div id="modalStatus" style="font-size: 17px; color: var(--color-label);"></div>
       </div>
@@ -642,6 +890,11 @@
     let todos = [];
     let editingId = null;
     let currentFilter = 'all';
+    let currentPriority = 'medium';
+    let searchQuery = '';
+    let lastDeletedTodo = null;
+    let undoTimeout = null;
+    let pendingPriority = 'medium';
 
     // DOM elements
     const todoList = document.getElementById('todoList');
@@ -650,11 +903,29 @@
     const progressFill = document.getElementById('progressFill');
     const completedCount = document.getElementById('completedCount');
     const pendingCount = document.getElementById('pendingCount');
+    const highPriorityCount = document.getElementById('highPriorityCount');
+    const completionRate = document.getElementById('completionRate');
     const emptyState = document.getElementById('emptyState');
     const clearBtn = document.getElementById('clearCompleted');
     const statusDot = document.getElementById('statusDot');
     const statusText = document.getElementById('statusText');
     const modalOverlay = document.getElementById('modalOverlay');
+    const undoToast = document.getElementById('undoToast');
+    const pullRefresh = document.getElementById('pullRefresh');
+
+    // 触觉反馈
+    function hapticFeedback(type = 'light') {
+      if ('vibrate' in navigator) {
+        const patterns = {
+          light: 10,
+          medium: 20,
+          heavy: 30,
+          success: [10, 30, 10],
+          error: [50, 50, 50]
+        };
+        navigator.vibrate(patterns[type] || patterns.light);
+      }
+    }
 
     // Initialize date
     document.getElementById('currentDate').textContent = new Date().toLocaleDateString('zh-CN', { 
@@ -663,11 +934,48 @@
       weekday: 'long'
     });
 
+    // 解析自然语言日期
+    function parseNaturalLanguage(text) {
+      const now = new Date();
+      const lowerText = text.toLowerCase();
+      
+      // 匹配 "今天/明天/后天 X点"
+      const todayMatch = lowerText.match(/(今天|明日|后天)(\D*)(\d{1,2})点?/);
+      if (todayMatch) {
+        const dayOffset = todayMatch[1] === '今天' ? 0 : todayMatch[1] === '明天' ? 1 : 2;
+        const hour = parseInt(todayMatch[3]);
+        const dueDate = new Date(now);
+        dueDate.setDate(dueDate.getDate() + dayOffset);
+        dueDate.setHours(hour, 0, 0, 0);
+        return dueDate.toISOString();
+      }
+      
+      // 匹配 "X天后"
+      const daysMatch = lowerText.match(/(\d+)\s*天后/);
+      if (daysMatch) {
+        const dueDate = new Date(now);
+        dueDate.setDate(dueDate.getDate() + parseInt(daysMatch[1]));
+        return dueDate.toISOString();
+      }
+      
+      // 匹配 "X小时后"
+      const hoursMatch = lowerText.match(/(\d+)\s*小时/);
+      if (hoursMatch) {
+        const dueDate = new Date(now);
+        dueDate.setHours(dueDate.getHours() + parseInt(hoursMatch[1]));
+        return dueDate.toISOString();
+      }
+      
+      return null;
+    }
+
     // Fetch todos
     async function fetchTodos() {
-      console.log("Fetching todos from:", API_URL);
       try {
-        const url = currentFilter === 'all' ? API_URL : `${API_URL}?tag=${currentFilter}`;
+        const params = new URLSearchParams();
+        if (currentFilter !== 'all') params.append('tag', currentFilter);
+        
+        const url = `${API_URL}?${params.toString()}`;
         const res = await fetch(url);
         const data = await res.json();
         if (data.success) {
@@ -677,54 +985,174 @@
           updateStatus(true);
         }
       } catch (e) {
-        console.error('Failed to fetch todos:', e.message, 'URL:', API_URL);
+        console.error('Failed to fetch todos:', e);
         updateStatus(false);
       }
     }
 
+    // 过滤任务
+    function filterTodos(todoList) {
+      let filtered = [...todoList];
+      
+      // 搜索过滤
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        filtered = filtered.filter(t => 
+          t.text.toLowerCase().includes(query)
+        );
+      }
+      
+      return filtered;
+    }
+
     // Render todos
     function renderTodos() {
+      // 保留 pull-refresh 元素
+      const refreshEl = document.getElementById('pullRefresh');
       todoList.innerHTML = '';
-      const completed = todos.filter(t => t.completed).length;
+      todoList.appendChild(refreshEl);
+      
+      const filteredTodos = filterTodos(todos);
+      const completed = filteredTodos.filter(t => t.completed).length;
       clearBtn.classList.toggle('visible', completed > 0);
       
-      if (todos.length === 0) {
+      if (filteredTodos.length === 0) {
         emptyState.style.display = 'block';
         return;
       }
       
       emptyState.style.display = 'none';
       
-      todos.forEach(todo => {
+      filteredTodos.forEach(todo => {
         const li = document.createElement('li');
         li.className = `todo-item${todo.completed ? ' completed' : ''}`;
+        li.dataset.id = todo.id;
+        
+        // 截止日期显示
+        let dueDateHtml = '';
+        if (todo.dueDate) {
+          const dueDate = new Date(todo.dueDate);
+          const now = new Date();
+          const isOverdue = dueDate < now && !todo.completed;
+          const isUrgent = dueDate < now.getTime() + 24 * 60 * 60 * 1000 && !todo.completed;
+          const dateStr = dueDate.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+          const timeStr = dueDate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+          dueDateHtml = `
+            <span class="todo-due-date ${isOverdue ? 'overdue' : ''} ${isUrgent && !isOverdue ? 'urgent' : ''}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M12 6v6l4 2"></path>
+              </svg>
+              ${dateStr} ${timeStr}
+            </span>
+          `;
+        }
+        
         li.innerHTML = `
           <div class="todo-checkbox${todo.completed ? ' checked' : ''}" data-id="${todo.id}"></div>
-          <span class="todo-text">${escapeHtml(todo.text)}</span>
-          <span class="todo-priority priority-${todo.priority}">${todo.priority}</span>
+          <div class="todo-content">
+            <span class="todo-text">${escapeHtml(todo.text)}</span>
+            <div class="todo-meta">
+              ${dueDateHtml}
+              <span class="todo-priority priority-${todo.priority}">${todo.priority}</span>
+            </div>
+          </div>
           <button class="delete-btn" data-id="${todo.id}">×</button>
         `;
         
+        // 绑定事件
         li.querySelector('.todo-checkbox').addEventListener('click', () => toggleTodo(todo.id));
-        li.querySelector('.todo-text').addEventListener('click', () => openModal(todo.id));
         li.querySelector('.delete-btn').addEventListener('click', (e) => {
           e.stopPropagation();
           deleteTodo(todo.id);
         });
+        li.querySelector('.todo-text').addEventListener('click', () => openModal(todo.id));
+        
+        // 触摸滑动支持
+        addTouchHandlers(li);
         
         todoList.appendChild(li);
       });
     }
 
+    // 触摸滑动处理
+    function addTouchHandlers(element) {
+      let startX = 0;
+      let currentX = 0;
+      let isDragging = false;
+
+      element.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        isDragging = true;
+      }, { passive: true });
+
+      element.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        currentX = e.touches[0].clientX - startX;
+        
+        if (currentX < -30) {
+          element.classList.add('touch-active');
+          if (currentX < -80) {
+            const id = element.dataset.id;
+            element.classList.remove('touch-active');
+            deleteTodo(id);
+            isDragging = false;
+          }
+        } else if (currentX > 30) {
+          element.classList.add('touch-active');
+          if (currentX > 80) {
+            const id = element.dataset.id;
+            element.classList.remove('touch-active');
+            toggleTodo(id);
+            isDragging = false;
+          }
+        }
+      }, { passive: true });
+
+      element.addEventListener('touchend', () => {
+        isDragging = false;
+        element.classList.remove('touch-active');
+      });
+    }
+
     // Update stats
     function updateStats() {
-      const completed = todos.filter(t => t.completed).length;
-      const total = todos.length;
-      const percent = total > 0 ? (completed / total) * 100 : 0;
+      const filteredTodos = filterTodos(todos);
+      const completed = filteredTodos.filter(t => t.completed).length;
+      const total = filteredTodos.length;
+      const highPriority = filteredTodos.filter(t => t.priority === 'high' && !t.completed).length;
+      const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
       
       progressFill.style.width = `${percent}%`;
       completedCount.textContent = completed;
       pendingCount.textContent = total - completed;
+      highPriorityCount.textContent = highPriority;
+      completionRate.textContent = `${percent}%`;
+    }
+
+    // Undo 功能
+    function showUndoToast() {
+      undoToast.classList.add('visible');
+      clearTimeout(undoTimeout);
+      undoTimeout = setTimeout(() => {
+        undoToast.classList.remove('visible');
+        lastDeletedTodo = null;
+      }, 3000);
+    }
+
+    function hideUndoToast() {
+      undoToast.classList.remove('visible');
+    }
+
+    function performUndo() {
+      if (lastDeletedTodo) {
+        todos.splice(lastDeletedTodo.index, 0, lastDeletedTodo.todo);
+        renderTodos();
+        updateStats();
+        hideUndoToast();
+        lastDeletedTodo = null;
+        hapticFeedback('light');
+      }
     }
 
     // Add todo (乐观更新)
@@ -733,15 +1161,20 @@
       const text = taskInput.value.trim();
       if (!text) return;
 
+      // 解析自然语言日期
+      const dueDate = parseNaturalLanguage(text);
+      const cleanText = text.replace(/(今天|明日|后天|\d+天后|\d+小时)[^]*$/, '').trim();
+
       // 创建临时 todo（乐观更新）
       const tempId = 'temp-' + Date.now();
       const tempTodo = {
         id: tempId,
-        text: text,
-        priority: 'medium',
+        text: cleanText || text,
+        priority: pendingPriority,
         completed: false,
         createdAt: Date.now(),
-        tag: 'user'
+        tag: 'user',
+        dueDate: dueDate
       };
 
       // 立即添加到列表
@@ -749,35 +1182,54 @@
       renderTodos();
       updateStats();
       taskInput.value = '';
+      pendingPriority = 'medium';
+      document.querySelectorAll('.priority-dot').forEach(d => {
+        d.classList.toggle('selected', d.dataset.priority === 'medium');
+      });
+      hapticFeedback('success');
 
       // 后台发送 API 请求
       try {
         const res = await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text, priority: 'medium', tag: 'user' })
+          body: JSON.stringify({ 
+            text: cleanText || text, 
+            priority: pendingPriority, 
+            tag: 'user',
+            dueDate: dueDate
+          })
         });
         const data = await res.json();
         if (data.success) {
-          // 用真实数据替换临时 todo
           const index = todos.findIndex(t => t.id === tempId);
           if (index !== -1) {
             todos[index] = data.data;
             renderTodos();
           }
         } else {
-          // 如果失败，移除临时 todo
           todos = todos.filter(t => t.id !== tempId);
           renderTodos();
           updateStats();
         }
       } catch (e) {
         console.error('Failed to add todo:', e);
-        // 失败时移除临时 todo
         todos = todos.filter(t => t.id !== tempId);
         renderTodos();
         updateStats();
       }
+    });
+
+    // 优先级选择
+    document.querySelectorAll('.priority-dot').forEach(dot => {
+      dot.addEventListener('click', (e) => {
+        e.preventDefault();
+        pendingPriority = dot.dataset.priority;
+        document.querySelectorAll('.priority-dot').forEach(d => {
+          d.classList.toggle('selected', d.dataset.priority === pendingPriority);
+        });
+        hapticFeedback('light');
+      });
     });
 
     // Toggle todo (乐观更新 + 动画)
@@ -785,16 +1237,13 @@
       const todo = todos.find(t => t.id === id);
       if (!todo) return;
 
-      // 立即乐观更新 UI
       const wasCompleted = todo.completed;
       todo.completed = !wasCompleted;
       
-      // 添加完成动画效果
-      const todoEl = todoList.children[todos.indexOf(todo)];
+      const todoEl = todoList.querySelector(`[data-id="${id}"]`);
       if (todoEl) {
-        // 触发重绘以重启动画
         todoEl.style.animation = 'none';
-        todoEl.offsetHeight; // 触发重绘
+        todoEl.offsetHeight;
         todoEl.style.animation = '';
         if (todo.completed) {
           todoEl.classList.add('completed');
@@ -803,8 +1252,8 @@
       
       renderTodos();
       updateStats();
+      hapticFeedback(wasCompleted ? 'light' : 'success');
 
-      // 后台发送 API 请求
       try {
         const res = await fetch(`${API_URL}/${id}`, {
           method: 'PUT',
@@ -813,55 +1262,43 @@
         });
         const data = await res.json();
         if (!data.success) {
-          // 如果失败，回滚
           todo.completed = wasCompleted;
           renderTodos();
           updateStats();
         }
       } catch (e) {
         console.error('Failed to toggle todo:', e);
-        // 回滚
         todo.completed = wasCompleted;
         renderTodos();
         updateStats();
       }
     }
 
-    // Delete todo (乐观更新)
+    // Delete todo (乐观更新 + Undo)
     async function deleteTodo(id) {
       const todoIndex = todos.findIndex(t => t.id === id);
       if (todoIndex === -1) return;
       
-      // 获取 DOM 元素并添加删除动画
-      const todoEl = todoList.children[todoIndex];
-      if (todoEl) {
-        todoEl.classList.add('removing');
-      }
+      const deleted = todos.splice(todoIndex, 1)[0];
+      lastDeletedTodo = { todo: deleted, index: todoIndex };
+      renderTodos();
+      updateStats();
+      hapticFeedback('medium');
+      showUndoToast();
       
-      // 等待动画完成后从列表移除
-      setTimeout(async () => {
-        const deleted = todos.splice(todoIndex, 1)[0];
-        renderTodos();
-        updateStats();
-        
-        // 后台发送 API 请求
-        try {
-          const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
-          const data = await res.json();
-          if (!data.success) {
-            // 如果失败，恢复
-            todos.splice(todoIndex, 0, deleted);
-            renderTodos();
-            updateStats();
-          }
-        } catch (e) {
-          console.error('Failed to delete todo:', e);
-          todos.splice(todoIndex, 0, deleted);
-          renderTodos();
-          updateStats();
+      try {
+        const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+          lastDeletedTodo = null;
         }
-      }, 250);
+      } catch (e) {
+        console.error('Failed to delete todo:', e);
+      }
     }
+
+    // Undo 按钮
+    document.getElementById('undoBtn').addEventListener('click', performUndo);
 
     // Clear completed
     clearBtn.addEventListener('click', async () => {
@@ -881,6 +1318,76 @@
       });
     });
 
+    // 搜索功能
+    const searchToggle = document.getElementById('searchToggle');
+    const searchBar = document.getElementById('searchBar');
+    const searchInput = document.getElementById('searchInput');
+    const searchClear = document.getElementById('searchClear');
+
+    searchToggle.addEventListener('click', () => {
+      const isActive = searchBar.classList.toggle('active');
+      searchToggle.classList.toggle('active', isActive);
+      if (isActive) {
+        searchInput.focus();
+      } else {
+        searchQuery = '';
+        searchInput.value = '';
+        searchClear.classList.remove('visible');
+        renderTodos();
+      }
+    });
+
+    searchInput.addEventListener('input', () => {
+      searchQuery = searchInput.value.trim();
+      searchClear.classList.toggle('visible', searchQuery);
+      renderTodos();
+    });
+
+    searchClear.addEventListener('click', () => {
+      searchInput.value = '';
+      searchQuery = '';
+      searchClear.classList.remove('visible');
+      searchInput.focus();
+      renderTodos();
+    });
+
+    // 下拉刷新
+    let pullStartY = 0;
+    let pullCurrentY = 0;
+    let isPulling = false;
+
+    document.addEventListener('touchstart', (e) => {
+      if (window.scrollY === 0) {
+        pullStartY = e.touches[0].clientY;
+        isPulling = true;
+      }
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (e) => {
+      if (!isPulling) return;
+      pullCurrentY = e.touches[0].clientY - pullStartY;
+      
+      if (pullCurrentY > 60) {
+        pullRefresh.classList.remove('hidden');
+        pullRefresh.classList.add('spinning');
+        pullRefresh.querySelector('span').textContent = '释放刷新';
+      } else if (pullCurrentY > 0) {
+        pullRefresh.classList.remove('hidden');
+        pullRefresh.querySelector('span').textContent = '下拉刷新';
+      }
+    }, { passive: true });
+
+    document.addEventListener('touchend', async () => {
+      if (isPulling && pullCurrentY > 60) {
+        await fetchTodos();
+        hapticFeedback('success');
+      }
+      isPulling = false;
+      pullCurrentY = 0;
+      pullRefresh.classList.add('hidden');
+      pullRefresh.classList.remove('spinning');
+    });
+
     // Modal functions
     function openModal(id) {
       editingId = id;
@@ -890,6 +1397,16 @@
       document.getElementById('modalTitle').textContent = '提醒详情';
       document.getElementById('modalText').value = todo.text;
       document.getElementById('modalPriority').value = todo.priority;
+      
+      // 截止日期
+      const dueDateInput = document.getElementById('modalDueDate');
+      if (todo.dueDate) {
+        const dueDate = new Date(todo.dueDate);
+        dueDateInput.value = dueDate.toISOString().slice(0, 16);
+      } else {
+        dueDateInput.value = '';
+      }
+      
       document.getElementById('modalStatus').innerHTML = todo.completed 
         ? '<span style="color: #34c759">已完成</span>' 
         : '<span style="color: #8e8e93">待办</span>';
@@ -915,36 +1432,42 @@
 
       const newText = document.getElementById('modalText').value.trim();
       const newPriority = document.getElementById('modalPriority').value;
+      const newDueDate = document.getElementById('modalDueDate').value;
 
-      // 乐观更新 UI
       const oldText = todo.text;
       const oldPriority = todo.priority;
+      const oldDueDate = todo.dueDate;
+      
       todo.text = newText;
       todo.priority = newPriority;
+      todo.dueDate = newDueDate ? new Date(newDueDate).toISOString() : null;
+      
       renderTodos();
       closeModal();
+      hapticFeedback('light');
 
-      // 后台发送 API 请求
       try {
         const res = await fetch(`${API_URL}/${editingId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             text: newText,
-            priority: newPriority
+            priority: newPriority,
+            dueDate: todo.dueDate
           })
         });
         const data = await res.json();
         if (!data.success) {
-          // 失败回滚
           todo.text = oldText;
           todo.priority = oldPriority;
+          todo.dueDate = oldDueDate;
           renderTodos();
         }
       } catch (e) {
         console.error('Failed to update todo:', e);
         todo.text = oldText;
         todo.priority = oldPriority;
+        todo.dueDate = oldDueDate;
         renderTodos();
       }
     });
@@ -973,24 +1496,20 @@
     const themeToggle = document.getElementById('themeToggle');
     const themeIcon = document.getElementById('themeIcon');
 
-    // 检测系统主题偏好
     function getSystemTheme() {
       return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     }
 
-    // 获取保存的主题设置
     function getSavedTheme() {
       const saved = localStorage.getItem('theme');
       if (saved) return saved;
       return getSystemTheme();
     }
 
-    // 应用主题
     function applyTheme(theme) {
       document.documentElement.setAttribute('data-theme', theme);
       localStorage.setItem('theme', theme);
       
-      // 更新图标
       if (theme === 'dark') {
         themeIcon.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
       } else {
@@ -998,28 +1517,94 @@
       }
     }
 
-    // 切换主题
     function toggleTheme() {
       const current = document.documentElement.getAttribute('data-theme') || 'light';
       const newTheme = current === 'dark' ? 'light' : 'dark';
       applyTheme(newTheme);
+      hapticFeedback('light');
     }
 
-    // 初始化主题
     applyTheme(getSavedTheme());
 
-    // 监听系统主题变化
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-      // 只有当用户没有手动设置过主题时才跟随系统
       if (!localStorage.getItem('theme')) {
         applyTheme(e.matches ? 'dark' : 'light');
       }
     });
 
-    // 点击切换
     themeToggle.addEventListener('click', toggleTheme);
 
-    // ==================== 其他功能 ====================
+    // ==================== 快捷键支持 ====================
+    document.addEventListener('keydown', (e) => {
+      // Cmd/Ctrl + K: 搜索
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchToggle.click();
+      }
+      // Cmd/Ctrl + Z: 撤销
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && lastDeletedTodo) {
+        e.preventDefault();
+        performUndo();
+      }
+      // Escape: 关闭模态框
+      if (e.key === 'Escape') {
+        closeModal();
+        if (searchBar.classList.contains('active')) {
+          searchToggle.click();
+        }
+      }
+      // Enter: 添加任务（当输入框聚焦时）
+      if (e.key === 'Enter' && document.activeElement === taskInput) {
+        addForm.dispatchEvent(new Event('submit'));
+      }
+      // 上/下箭头：导航任务
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        const items = todoList.querySelectorAll('.todo-item:not(.removing)');
+        if (items.length === 0) return;
+        
+        const current = document.activeElement.closest('.todo-item');
+        let index = current ? Array.from(items).indexOf(current) : -1;
+        
+        if (e.key === 'ArrowDown') {
+          index = Math.min(index + 1, items.length - 1);
+        } else {
+          index = Math.max(index - 1, 0);
+        }
+        
+        if (index >= 0) {
+          items[index].querySelector('.todo-text').focus();
+        }
+      }
+    });
+
+    // ==================== 本地缓存 ====================
+    function saveToLocal() {
+      localStorage.setItem('todos_backup', JSON.stringify(todos));
+    }
+
+    function loadFromLocal() {
+      const backup = localStorage.getItem('todos_backup');
+      if (backup) {
+        try {
+          const cached = JSON.parse(backup);
+          if (Array.isArray(cached) && cached.length > 0) {
+            todos = cached;
+            renderTodos();
+            updateStats();
+          }
+        } catch (e) {
+          console.error('Failed to load from local:', e);
+        }
+      }
+    }
+
+    // 备份定时器
+    setInterval(saveToLocal, 5000);
+
+    // 页面加载时尝试从本地恢复
+    loadFromLocal();
+
+    // ==================== 启动 ====================
     
     // Poll for changes
     setInterval(fetchTodos, 10000);

@@ -30,6 +30,7 @@ async function addTodo(text, priority = 'medium', metadata = {}) {
       body: JSON.stringify({
         text,
         priority,
+        tag: 'bot',  // Mark as bot-generated task
         source: 'openclaw',
         metadata
       })
@@ -37,7 +38,7 @@ async function addTodo(text, priority = 'medium', metadata = {}) {
     
     const data = await response.json();
     if (data.success) {
-      console.log(`✅ Added: "${text}"`);
+      console.log(`✅ [BOT] Added: "${text}"`);
       return true;
     }
     return false;
