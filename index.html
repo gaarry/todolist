@@ -766,7 +766,7 @@
       }
       
       // 等待动画完成后从列表移除
-      setTimeout(() => {
+      setTimeout(async () => {
         const deleted = todos.splice(todoIndex, 1)[0];
         renderTodos();
         updateStats();
