@@ -171,11 +171,19 @@
       padding: 12px 0;
       border-bottom: 0.5px solid var(--color-separator);
       gap: 12px;
-      animation: fadeIn 0.3s ease;
+      animation: slideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
     .todo-item:last-child {
       border-bottom: none;
+    }
+
+    .todo-item.completed {
+      animation: completePulse 0.4s ease;
+    }
+
+    .todo-item.removing {
+      animation: slideOut 0.25s ease forwards;
     }
 
     .todo-item.completed .todo-text {
@@ -455,9 +463,25 @@
       opacity: 0.85;
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-8px); }
-      to { opacity: 1; transform: translateY(0); }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-16px) scale(0.95); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes slideOut {
+      from { opacity: 1; transform: translateX(0); }
+      to { opacity: 0; transform: translateX(-30px); }
+    }
+
+    @keyframes completePulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
     }
   </style>
 </head>
@@ -682,7 +706,7 @@
       }
     });
 
-    // Toggle todo (乐观更新)
+    // Toggle todo (乐观更新 + 动画)
     async function toggleTodo(id) {
       const todo = todos.find(t => t.id === id);
       if (!todo) return;
@@ -690,6 +714,17 @@
       // 立即乐观更新 UI
       const wasCompleted = todo.completed;
       todo.completed = !wasCompleted;
+      
+      // 添加完成动画效果
+      const todoEl = todoList.children[todos.indexOf(todo)];
+      if (todoEl) {
+        todoEl.classList.remove('completed');
+        void todoEl.offsetWidth; // 触发重绘
+        if (todo.completed) {
+          todoEl.classList.add('completed');
+        }
+      }
+      
       renderTodos();
       updateStats();
 
@@ -721,27 +756,35 @@
       const todoIndex = todos.findIndex(t => t.id === id);
       if (todoIndex === -1) return;
       
-      // 立即乐观更新 UI
-      const deleted = todos.splice(todoIndex, 1)[0];
-      renderTodos();
-      updateStats();
-
-      // 后台发送 API 请求
-      try {
-        const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
-        const data = await res.json();
-        if (!data.success) {
-          // 如果失败，恢复
+      // 获取 DOM 元素并添加删除动画
+      const todoEl = todoList.children[todoIndex];
+      if (todoEl) {
+        todoEl.classList.add('removing');
+      }
+      
+      // 等待动画完成后从列表移除
+      setTimeout(() => {
+        const deleted = todos.splice(todoIndex, 1)[0];
+        renderTodos();
+        updateStats();
+        
+        // 后台发送 API 请求
+        try {
+          const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (!data.success) {
+            // 如果失败，恢复
+            todos.splice(todoIndex, 0, deleted);
+            renderTodos();
+            updateStats();
+          }
+        } catch (e) {
+          console.error('Failed to delete todo:', e);
           todos.splice(todoIndex, 0, deleted);
           renderTodos();
           updateStats();
         }
-      } catch (e) {
-        console.error('Failed to delete todo:', e);
-        todos.splice(todoIndex, 0, deleted);
-        renderTodos();
-        updateStats();
-      }
+      }, 250);
     }
 
     // Clear completed
