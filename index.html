@@ -1399,6 +1399,10 @@
         }
       }
 
+      console.log('=== modalSave Debug ===');
+      console.log('oldDueDate:', oldDueDate);
+      console.log('newDueDateISO:', newDueDateISO);
+
       // 乐观更新
       todo.text = newText;
       todo.priority = newPriority;
@@ -1419,20 +1423,32 @@
           })
         });
 
+        console.log('API response status:', res.status);
+
         if (!res.ok) {
           throw new Error('API error: ' + res.status);
         }
 
         const data = await res.json();
+        console.log('API response data.success:', data.success);
+        console.log('API response data.data.dueDate:', data.data?.dueDate);
 
         if (data.success && data.data) {
           // 用服务器返回的数据更新本地
           const serverDueDate = data.data.dueDate;
           const localTodo = todos.find(t => t.id === editingId);
+          console.log('serverDueDate:', serverDueDate);
           if (localTodo) {
             localTodo.dueDate = serverDueDate;
             renderTodos();
           }
+        } else {
+          console.log('API failed, rolling back...');
+          // 回滚
+          todo.text = oldText;
+          todo.priority = oldPriority;
+          todo.dueDate = oldDueDate;
+          renderTodos();
         }
       } catch (e) {
         console.error('Failed to update todo:', e);
