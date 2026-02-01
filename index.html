@@ -415,6 +415,54 @@
       opacity: 0.85;
     }
 
+    /* Tag filter */
+    .tag-filter {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding: 8px 0;
+    }
+
+    .filter-btn {
+      padding: 6px 16px;
+      border: 1px solid var(--border);
+      background: var(--bg-primary);
+      border-radius: 16px;
+      font-size: 14px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .filter-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    /* Todo tag */
+    .todo-tag {
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+
+    .tag-bot {
+      background: #e5f2ff;
+      color: #007aff;
+    }
+
+    .tag-user {
+      background: #fff8e6;
+      color: #ff9500;
+    }
+
     /* Priority selector in add form */
     .priority-select {
       border: none;
@@ -426,6 +474,19 @@
     }
 
     .priority-select:focus {
+      color: var(--accent);
+    }
+
+    .tag-select {
+      border: none;
+      background: transparent;
+      font-size: 14px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      outline: none;
+    }
+
+    .tag-select:focus {
       color: var(--accent);
     }
   </style>
@@ -445,6 +506,10 @@
         <option value="medium" selected>中</option>
         <option value="high">高</option>
       </select>
+      <select class="tag-select" id="tagSelect">
+        <option value="user" selected>👤 用户</option>
+        <option value="bot">🤖 Bot</option>
+      </select>
     </form>
 
     <div class="progress-bar">
@@ -457,6 +522,13 @@
     </div>
 
     <div style="margin: 32px 0;"></div>
+
+    <!-- Tag Filter -->
+    <div class="tag-filter">
+      <button class="filter-btn active" data-filter="all">全部</button>
+      <button class="filter-btn" data-filter="user">👤 用户</button>
+      <button class="filter-btn" data-filter="bot">🤖 Bot</button>
+    </div>
 
     <div class="list-header">
       <h2>待办事项</h2>
@@ -508,6 +580,7 @@
     const API_URL = '/api/todos';
     let todos = [];
     let editingId = null;
+    let currentFilter = 'all'; // 'all', 'user', 'bot'
 
     // Debug: Log all element lookups
     const elements = {};
@@ -525,6 +598,7 @@
     const addForm = elements.addForm;
     const taskInput = document.getElementById('taskInput');
     const prioritySelect = document.getElementById('prioritySelect');
+    const tagSelect = document.getElementById('tagSelect');
     const progressFill = document.getElementById('progressFill');
     const completedCount = document.getElementById('completedCount');
     const pendingCount = document.getElementById('pendingCount');
@@ -544,7 +618,8 @@
     // Fetch todos
     async function fetchTodos() {
       try {
-        const res = await fetch(API_URL);
+        const url = currentFilter === 'all' ? API_URL : `${API_URL}?tag=${currentFilter}`;
+        const res = await fetch(url);
         const data = await res.json();
         if (data.success) {
           todos = data.data;
@@ -557,6 +632,16 @@
         updateStatus(false);
       }
     }
+
+    // Tag filter
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter;
+        fetchTodos();
+      });
+    });
 
     // Render todos
     function renderTodos() {
@@ -577,6 +662,7 @@
         li.innerHTML = `
           <div class="todo-checkbox${todo.completed ? ' checked' : ''}" data-id="${todo.id}"></div>
           <span class="todo-text">${escapeHtml(todo.text)}</span>
+          <span class="todo-tag tag-${todo.tag || 'user'}">${todo.tag === 'bot' ? '🤖' : '👤'}</span>
           <span class="todo-priority priority-${todo.priority}">${todo.priority}</span>
           <button class="delete-btn" data-id="${todo.id}">×</button>
         `;
@@ -613,7 +699,7 @@
         const res = await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text, priority: prioritySelect.value })
+          body: JSON.stringify({ text, priority: prioritySelect.value, tag: tagSelect.value })
         });
         const data = await res.json();
         if (data.success) {

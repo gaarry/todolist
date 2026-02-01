@@ -1,14 +1,15 @@
 // Vercel Serverless API for Todo List
 // Uses GitHub Gist for persistent storage
+// Supports tags: 'bot' or 'user'
 
 const GIST_ID = process.env.GIST_ID || 'aabff1940df8f8666f76584089a682fd';
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
 // Initial sample todos
 const DEFAULT_TODOS = [
-  { id: '1', text: 'Welcome to Reminders!', priority: 'medium', completed: false, createdAt: Date.now(), source: 'system' },
-  { id: '2', text: 'Click checkbox to complete', priority: 'low', completed: false, createdAt: Date.now(), source: 'system' },
-  { id: '3', text: 'Tasks sync with OpenClaw 🤖', priority: 'high', completed: false, createdAt: Date.now(), source: 'system' }
+  { id: '1', text: 'Welcome to Reminders!', priority: 'medium', completed: false, createdAt: Date.now(), source: 'system', tag: 'user' },
+  { id: '2', text: 'Click checkbox to complete', priority: 'low', completed: false, createdAt: Date.now(), source: 'system', tag: 'user' },
+  { id: '3', text: 'Tasks sync with OpenClaw 🤖', priority: 'high', completed: false, createdAt: Date.now(), source: 'system', tag: 'bot' }
 ];
 
 // GitHub API helper
@@ -95,7 +96,21 @@ function error(message, status = 400) {
 export async function GET(request) {
   const url = new URL(request.url);
   const path = url.pathname.replace('/api', '');
-  const todos = await getStorage();
+  const params = url.searchParams;
+  
+  // Filter by tag: ?tag=bot or ?tag=user
+  const filterTag = params.get('tag');
+  const onlyCompleted = params.get('completed') === 'true';
+  
+  let todos = await getStorage();
+  
+  // Apply filters
+  if (filterTag) {
+    todos = todos.filter(t => t.tag === filterTag);
+  }
+  if (onlyCompleted) {
+    todos = todos.filter(t => t.completed);
+  }
   
   if (path === '/todos' || path === '/' || path === '') {
     return json({ 
@@ -104,7 +119,9 @@ export async function GET(request) {
       stats: { 
         total: todos.length, 
         completed: todos.filter(t => t.completed).length, 
-        pending: todos.filter(t => !t.completed).length 
+        pending: todos.filter(t => !t.completed).length,
+        bot: todos.filter(t => t.tag === 'bot').length,
+        user: todos.filter(t => t.tag === 'user').length,
       } 
     });
   }
@@ -143,7 +160,8 @@ export async function POST(request) {
       completed: false,
       createdAt: Date.now(),
       source: body.source || 'manual',
-      metadata: body.metadata || {}
+      metadata: body.metadata || {},
+      tag: body.tag || 'user'  // Default to 'user', use 'bot' for bot-generated
     };
     
     todos.unshift(todo);
@@ -182,6 +200,9 @@ export async function PUT(request) {
     }
     if (body.priority !== undefined) {
       todos[todoIndex].priority = body.priority;
+    }
+    if (body.tag !== undefined) {
+      todos[todoIndex].tag = body.tag;
     }
     todos[todoIndex].updatedAt = Date.now();
     

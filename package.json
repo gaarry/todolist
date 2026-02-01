@@ -8,6 +8,14 @@
     "build": "echo 'No build step required'",
     "start": "npx serve . -p 3000"
   },
-  "keywords": ["todo", "task", "openclaw", "vercel"],
-  "license": "MIT"
+  "keywords": [
+    "todo",
+    "task",
+    "openclaw",
+    "vercel"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@vercel/blob": "^2.0.1"
+  }
 }
