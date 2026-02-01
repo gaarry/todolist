@@ -960,12 +960,108 @@
       }
     });
 
+    // Handle checkbox click - toggle completion
     todoList.addEventListener('click', (e) => {
-      if (e.target.classList.contains('delete-btn')) {
-        const li = e.target.closest('.todo-item');
-        deleteTodo(li.dataset.id);
+      const checkbox = e.target.closest('.checkbox');
+      const deleteBtn = e.target.closest('.delete-btn');
+      const li = e.target.closest('.todo-item');
+      
+      if (!li) return;
+      
+      const id = li.dataset.id;
+      
+      if (checkbox) {
+        // Checkbox clicked - toggle completion
+        e.stopPropagation();
+        toggleTodo(id);
+      } else if (deleteBtn) {
+        // Delete button clicked
+        e.stopPropagation();
+        if (confirm('Remove this dream?')) {
+          deleteTodo(id);
+        }
+      } else {
+        // Card clicked - show details
+        showTaskDetails(id);
       }
     });
+
+    // Show task details in modal
+    function showTaskDetails(id) {
+      const todo = todos.find(t => t.id === id);
+      if (!todo) return;
+      
+      const modalId = 'modal-' + Date.now();
+      const modal = document.createElement('div');
+      modal.id = modalId;
+      modal.className = 'modal-overlay';
+      modal.innerHTML = `
+        <div class="modal-content">
+          <button class="modal-close" onclick="closeModal('${modalId}')">✕</button>
+          <h3>${escapeHtml(todo.text)}</h3>
+          <div class="modal-info">
+            <p><strong>Priority:</strong> <span class="priority-badge ${todo.priority}">${todo.priority.toUpperCase()}</span></p>
+            <p><strong>Status:</strong> ${todo.completed ? '✅ Completed' : '⏳ Pending'}</p>
+            <p><strong>Created:</strong> ${formatDate(todo.createdAt)}</p>
+            ${todo.completedAt ? `<p><strong>Completed:</strong> ${formatDate(todo.completedAt)}</p>` : ''}
+            ${todo.source ? `<p><strong>Source:</strong> ${todo.source}</p>` : ''}
+          </div>
+          <div class="modal-actions">
+            ${!todo.completed ? `<button class="btn-primary" onclick="completeTask('${id}', '${modalId}')">✓ Mark Complete</button>` : ''}
+            <button class="btn-danger" onclick="removeTask('${id}', '${modalId}')">✕ Remove</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      
+      // Add modal styles
+      const styleId = 'modal-style-' + Date.now();
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
+        #${modalId} { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; animation: fadeIn 0.3s ease; }
+        #${modalId} .modal-content { background: var(--color-card); border: 1px solid var(--color-border); border-radius: 8px; padding: 32px; max-width: 400px; width: 90%; position: relative; }
+        #${modalId} .modal-close { position: absolute; top: 12px; right: 12px; background: none; border: none; color: var(--color-text-muted); font-size: 20px; cursor: pointer; padding: 4px 8px; }
+        #${modalId} .modal-close:hover { color: var(--color-text); }
+        #${modalId} h3 { font-family: var(--font-display); font-size: 24px; margin-bottom: 20px; padding-right: 32px; }
+        #${modalId} .modal-info { font-family: var(--font-mono); font-size: 13px; color: var(--color-text-muted); margin-bottom: 24px; }
+        #${modalId} .modal-info p { margin: 8px 0; }
+        #${modalId} .modal-actions { display: flex; gap: 12px; }
+        #${modalId} .btn-primary, #${modalId} .btn-danger { flex: 1; padding: 12px; border: none; border-radius: 4px; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.1em; cursor: pointer; transition: all 0.3s ease; }
+        #${modalId} .btn-primary { background: var(--color-accent); color: var(--color-bg); }
+        #${modalId} .btn-danger { background: transparent; border: 1px solid #ef4444; color: #ef4444; }
+        #${modalId} .btn-primary:hover, #${modalId} .btn-danger:hover { transform: translateY(-2px); }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      `;
+      document.head.appendChild(style);
+    }
+
+    // Global functions for modal actions
+    window.closeModal = function(modalId) {
+      const modal = document.getElementById(modalId);
+      if (modal) {
+        modal.remove();
+        const style = document.head.querySelector('style[id^="modal-style-"]');
+        if (style) style.remove();
+      }
+    };
+    
+    window.completeTask = function(id, modalId) {
+      toggleTodo(id);
+      closeModal(modalId);
+    };
+    
+    window.removeTask = function(id, modalId) {
+      if (confirm('Remove this dream permanently?')) {
+        deleteTodo(id);
+        closeModal(modalId);
+      }
+    };
+
+    // Expose for OpenClaw integration
+    window.addTaskFromOpenClaw = function(text, priority) {
+      addTodo(text, priority || 'medium');
+    };
 
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
