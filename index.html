@@ -1348,11 +1348,13 @@
       document.getElementById('modalText').value = todo.text;
       document.getElementById('modalPriority').value = todo.priority;
       
-      // 截止日期
+      // 截止日期（正确处理时区）
       const dueDateInput = document.getElementById('modalDueDate');
       if (todo.dueDate) {
         const dueDate = new Date(todo.dueDate);
-        dueDateInput.value = dueDate.toISOString().slice(0, 16);
+        // 使用 getTime() + 时区偏移来正确显示本地时间
+        const localDate = new Date(dueDate.getTime() - dueDate.getTimezoneOffset() * 60000);
+        dueDateInput.value = localDate.toISOString().slice(0, 16);
       } else {
         dueDateInput.value = '';
       }
@@ -1390,6 +1392,7 @@
       
       todo.text = newText;
       todo.priority = newPriority;
+      // 修复时区问题：datetime-local 是本地时间，需要正确转换
       todo.dueDate = newDueDate ? new Date(newDueDate).toISOString() : null;
       
       renderTodos();
