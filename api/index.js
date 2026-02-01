@@ -161,7 +161,8 @@ export async function POST(request) {
       createdAt: Date.now(),
       source: body.source || 'manual',
       metadata: body.metadata || {},
-      tag: body.tag || 'user'  // Default to 'user', use 'bot' for bot-generated
+      tag: body.tag || 'user',  // Default to 'user', use 'bot' for bot-generated
+      dueDate: body.dueDate || null
     };
     
     todos.unshift(todo);
@@ -203,6 +204,9 @@ export async function PUT(request) {
     }
     if (body.tag !== undefined) {
       todos[todoIndex].tag = body.tag;
+    }
+    if (body.dueDate !== undefined) {
+      todos[todoIndex].dueDate = body.dueDate;
     }
     todos[todoIndex].updatedAt = Date.now();
     
