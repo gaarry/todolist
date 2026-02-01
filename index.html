@@ -718,8 +718,10 @@
       // 添加完成动画效果
       const todoEl = todoList.children[todos.indexOf(todo)];
       if (todoEl) {
-        todoEl.classList.remove('completed');
-        void todoEl.offsetWidth; // 触发重绘
+        // 触发重绘以重启动画
+        todoEl.style.animation = 'none';
+        todoEl.offsetHeight; // 触发重绘
+        todoEl.style.animation = '';
         if (todo.completed) {
           todoEl.classList.add('completed');
         }
