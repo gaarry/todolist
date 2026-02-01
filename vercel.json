@@ -1,10 +1,13 @@
 {
-  "version": 2,
   "outputDirectory": ".",
+  "functions": {
+    "api/index.js": {
+      "runtime": "nodejs22.x"
+    }
+  },
   "routes": [
-    { "src": "/api/todos", "dest": "/api/todos.js" },
-    { "src": "/api/todos/(.*)", "dest": "/api/todos.js" },
-    { "src": "/api", "dest": "/api/todos.js" },
+    { "src": "/api/(.*)", "dest": "/api/index.js" },
+    { "src": "/api", "dest": "/api/index.js" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
