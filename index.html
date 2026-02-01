@@ -1351,33 +1351,53 @@
       renderTodos();
     });
 
-    // 下拉刷新
+    // 下拉刷新（仅在顶部触发）
     let pullStartY = 0;
     let pullCurrentY = 0;
     let isPulling = false;
+    let initialScrollY = 0;
 
-    document.addEventListener('touchstart', (e) => {
-      if (window.scrollY === 0) {
+    // 只在 todo 列表区域监听下拉刷新
+    const listContainer = document.querySelector('.container');
+    
+    listContainer.addEventListener('touchstart', (e) => {
+      // 只在列表顶部且向下拉时才触发
+      if (window.scrollY <= 5) {
         pullStartY = e.touches[0].clientY;
+        initialScrollY = window.scrollY;
         isPulling = true;
       }
     }, { passive: true });
 
-    document.addEventListener('touchmove', (e) => {
+    listContainer.addEventListener('touchmove', (e) => {
       if (!isPulling) return;
+      
+      // 如果用户向上滚，取消下拉刷新
+      if (window.scrollY > initialScrollY + 10) {
+        isPulling = false;
+        pullRefresh.classList.add('hidden');
+        return;
+      }
+      
       pullCurrentY = e.touches[0].clientY - pullStartY;
       
-      if (pullCurrentY > 60) {
+      // 只处理向下拉的情况
+      if (pullCurrentY > 20 && pullCurrentY < 200) {
+        e.preventDefault(); // 阻止默认滚动，以便显示刷新指示器
         pullRefresh.classList.remove('hidden');
-        pullRefresh.classList.add('spinning');
-        pullRefresh.querySelector('span').textContent = '释放刷新';
-      } else if (pullCurrentY > 0) {
-        pullRefresh.classList.remove('hidden');
-        pullRefresh.querySelector('span').textContent = '下拉刷新';
+        if (pullCurrentY > 60) {
+          pullRefresh.classList.add('spinning');
+          pullRefresh.querySelector('span').textContent = '释放刷新';
+        } else {
+          pullRefresh.classList.remove('spinning');
+          pullRefresh.querySelector('span').textContent = '下拉刷新';
+        }
+      } else if (pullCurrentY <= 20) {
+        pullRefresh.classList.add('hidden');
       }
-    }, { passive: true });
+    }, { passive: false });
 
-    document.addEventListener('touchend', async () => {
+    listContainer.addEventListener('touchend', async () => {
       if (isPulling && pullCurrentY > 60) {
         await fetchTodos();
         hapticFeedback('success');
