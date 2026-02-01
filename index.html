@@ -1377,10 +1377,18 @@
     });
 
     document.getElementById('modalSave').addEventListener('click', async () => {
-      if (!editingId) return;
+      // 关键：立即捕获 editingId，避免异步期间被修改
+      const currentId = editingId;
+      if (!currentId) {
+        console.error('editingId is null!');
+        return;
+      }
 
-      const todo = todos.find(t => t.id === editingId);
-      if (!todo) return;
+      const todo = todos.find(t => t.id === currentId);
+      if (!todo) {
+        console.error('Todo not found:', currentId);
+        return;
+      }
 
       const newText = document.getElementById('modalText').value.trim();
       const newPriority = document.getElementById('modalPriority').value;
@@ -1399,7 +1407,8 @@
         }
       }
 
-      console.log('=== modalSave Debug ===');
+      console.log('=== modalSave ===');
+      console.log('currentId:', currentId);
       console.log('oldDueDate:', oldDueDate);
       console.log('newDueDateISO:', newDueDateISO);
 
@@ -1413,7 +1422,7 @@
       hapticFeedback('light');
 
       try {
-        const res = await fetch(`${API_URL}/${editingId}`, {
+        const res = await fetch(`${API_URL}/${currentId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1423,32 +1432,21 @@
           })
         });
 
-        console.log('API response status:', res.status);
-
         if (!res.ok) {
           throw new Error('API error: ' + res.status);
         }
 
         const data = await res.json();
-        console.log('API response data.success:', data.success);
-        console.log('API response data.data.dueDate:', data.data?.dueDate);
+        console.log('API success:', data.success);
 
         if (data.success && data.data) {
           // 用服务器返回的数据更新本地
           const serverDueDate = data.data.dueDate;
-          const localTodo = todos.find(t => t.id === editingId);
-          console.log('serverDueDate:', serverDueDate);
+          const localTodo = todos.find(t => t.id === currentId);
           if (localTodo) {
             localTodo.dueDate = serverDueDate;
             renderTodos();
           }
-        } else {
-          console.log('API failed, rolling back...');
-          // 回滚
-          todo.text = oldText;
-          todo.priority = oldPriority;
-          todo.dueDate = oldDueDate;
-          renderTodos();
         }
       } catch (e) {
         console.error('Failed to update todo:', e);
