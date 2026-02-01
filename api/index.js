@@ -1,30 +1,60 @@
 // Vercel Serverless API for Todo List
-// Uses filesystem for persistence in dev, global for production
+// Uses Upstash Redis for persistence
 
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+// Check if Upstash is configured
+const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
+const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-const DATA_FILE = '/tmp/todos.json';
+// In-memory fallback for development without Redis
+let memoryTodos = [
+  { id: '1', text: 'Welcome to Reminders!', priority: 'medium', completed: false, createdAt: Date.now(), source: 'system' },
+  { id: '2', text: 'Click checkbox to complete', priority: 'low', completed: false, createdAt: Date.now(), source: 'system' },
+  { id: '3', text: 'Tasks sync with OpenClaw 🤖', priority: 'high', completed: false, createdAt: Date.now(), source: 'system' }
+];
 
-// Initialize storage
-function getStorage() {
-  if (existsSync(DATA_FILE)) {
-    try {
-      const data = readFileSync(DATA_FILE, 'utf-8');
-      return JSON.parse(data);
-    } catch (e) {}
+// Redis client (lazy init)
+let redis = null;
+function getRedis() {
+  if (!redis && UPSTASH_URL && UPSTASH_TOKEN) {
+    redis = {
+      async get(key) {
+        const res = await fetch(`${UPSTASH_URL}/get/todos`, {
+          headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` }
+        });
+        const data = await res.json();
+        return data.result;
+      },
+      async set(key, value) {
+        await fetch(`${UPSTASH_URL}/set/todos`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${UPSTASH_TOKEN}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ value })
+        });
+      }
+    };
   }
-  return [
-    { id: '1', text: 'Welcome to Dream List! 🎯', priority: 'medium', completed: false, createdAt: Date.now(), source: 'system' },
-    { id: '2', text: 'Click checkbox to complete tasks ✓', priority: 'low', completed: false, createdAt: Date.now(), source: 'system' },
-    { id: '3', text: 'OpenClaw tasks auto-appear here 🤖', priority: 'high', completed: false, createdAt: Date.now(), source: 'system' }
-  ];
+  return redis;
 }
 
-function saveStorage(todos) {
-  try {
-    writeFileSync(DATA_FILE, JSON.stringify(todos, null, 2));
-  } catch (e) {
-    // Ignore write errors in production
+// Storage functions
+async function getStorage() {
+  const r = getRedis();
+  if (r) {
+    const data = await r.get('todos');
+    if (data) return JSON.parse(data);
+  }
+  return [...memoryTodos];
+}
+
+async function saveStorage(todos) {
+  const r = getRedis();
+  if (r) {
+    await r.set('todos', JSON.stringify(todos));
+  } else {
+    memoryTodos = todos;
   }
 }
 
@@ -40,14 +70,22 @@ function error(message, status = 400) {
   return json({ success: false, error: message }, status);
 }
 
-// GET /api
+// GET /api/todos
 export async function GET(request) {
   const url = new URL(request.url);
   const path = url.pathname.replace('/api', '');
-  const todos = getStorage();
+  const todos = await getStorage();
   
   if (path === '/todos' || path === '/' || path === '') {
-    return json({ success: true, data: todos, stats: { total: todos.length, completed: todos.filter(t => t.completed).length, pending: todos.filter(t => !t.completed).length } });
+    return json({ 
+      success: true, 
+      data: todos, 
+      stats: { 
+        total: todos.length, 
+        completed: todos.filter(t => t.completed).length, 
+        pending: todos.filter(t => !t.completed).length 
+      } 
+    });
   }
   
   const match = path.match(/^\/todos\/(.+)$/);
@@ -76,7 +114,7 @@ export async function POST(request) {
       return error('Text is required', 400);
     }
     
-    const todos = getStorage();
+    const todos = await getStorage();
     const todo = {
       id: Date.now().toString(36) + Math.random().toString(36).substr(2),
       text: body.text.trim(),
@@ -88,7 +126,7 @@ export async function POST(request) {
     };
     
     todos.unshift(todo);
-    saveStorage(todos);
+    await saveStorage(todos);
     return json({ success: true, data: todo }, 201);
   } catch (e) {
     return error('Invalid request body', 400);
@@ -104,7 +142,7 @@ export async function PUT(request) {
   if (!match) return error('Not found', 404);
   
   const id = match[1];
-  let todos = getStorage();
+  let todos = await getStorage();
   const todoIndex = todos.findIndex(t => t.id === id);
   
   if (todoIndex === -1) {
@@ -126,7 +164,7 @@ export async function PUT(request) {
     }
     todos[todoIndex].updatedAt = Date.now();
     
-    saveStorage(todos);
+    await saveStorage(todos);
     return json({ success: true, data: todos[todoIndex] });
   } catch (e) {
     return error('Invalid request', 400);
@@ -142,7 +180,7 @@ export async function DELETE(request) {
   if (!match) return error('Not found', 404);
   
   const id = match[1];
-  let todos = getStorage();
+  let todos = await getStorage();
   const todoIndex = todos.findIndex(t => t.id === id);
   
   if (todoIndex === -1) {
@@ -150,7 +188,7 @@ export async function DELETE(request) {
   }
   
   const deleted = todos.splice(todoIndex, 1)[0];
-  saveStorage(todos);
+  await saveStorage(todos);
   return json({ success: true, data: deleted });
 }
 
