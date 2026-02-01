@@ -825,15 +825,7 @@
       <button class="clear-btn" id="clearCompleted">清除已完成</button>
     </div>
 
-    <ul class="todo-list" id="todoList">
-      <div class="pull-refresh hidden" id="pullRefresh">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M23 4v6h-6M1 20v-6h6"></path>
-          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-        </svg>
-        <span>下拉刷新</span>
-      </div>
-    </ul>
+    <ul class="todo-list" id="todoList"></ul>
     
     <div class="empty-state" id="emptyState" style="display: none;">
       <div class="icon">📋</div>
@@ -911,7 +903,6 @@
     const statusText = document.getElementById('statusText');
     const modalOverlay = document.getElementById('modalOverlay');
     const undoToast = document.getElementById('undoToast');
-    const pullRefresh = document.getElementById('pullRefresh');
 
     // 触觉反馈
     function hapticFeedback(type = 'light') {
@@ -1007,11 +998,7 @@
 
     // Render todos
     function renderTodos() {
-      // 保留 pull-refresh 元素
-      const refreshEl = document.getElementById('pullRefresh');
-      todoList.innerHTML = '';
-      todoList.appendChild(refreshEl);
-      
+      todoList.innerHTML = '';      
       const filteredTodos = filterTodos(todos);
       const completed = filteredTodos.filter(t => t.completed).length;
       clearBtn.classList.toggle('visible', completed > 0);
@@ -1351,64 +1338,7 @@
       renderTodos();
     });
 
-    // 下拉刷新（仅在顶部触发）
-    let pullStartY = 0;
-    let pullCurrentY = 0;
-    let isPulling = false;
-    let initialScrollY = 0;
-
-    // 只在 todo 列表区域监听下拉刷新
-    const listContainer = document.querySelector('.container');
-    
-    listContainer.addEventListener('touchstart', (e) => {
-      // 只在列表顶部且向下拉时才触发
-      if (window.scrollY <= 5) {
-        pullStartY = e.touches[0].clientY;
-        initialScrollY = window.scrollY;
-        isPulling = true;
-      }
-    }, { passive: true });
-
-    listContainer.addEventListener('touchmove', (e) => {
-      if (!isPulling) return;
-      
-      // 如果用户向上滚，取消下拉刷新
-      if (window.scrollY > initialScrollY + 10) {
-        isPulling = false;
-        pullRefresh.classList.add('hidden');
-        return;
-      }
-      
-      pullCurrentY = e.touches[0].clientY - pullStartY;
-      
-      // 只处理向下拉的情况
-      if (pullCurrentY > 20 && pullCurrentY < 200) {
-        e.preventDefault(); // 阻止默认滚动，以便显示刷新指示器
-        pullRefresh.classList.remove('hidden');
-        if (pullCurrentY > 60) {
-          pullRefresh.classList.add('spinning');
-          pullRefresh.querySelector('span').textContent = '释放刷新';
-        } else {
-          pullRefresh.classList.remove('spinning');
-          pullRefresh.querySelector('span').textContent = '下拉刷新';
-        }
-      } else if (pullCurrentY <= 20) {
-        pullRefresh.classList.add('hidden');
-      }
-    }, { passive: false });
-
-    listContainer.addEventListener('touchend', async () => {
-      if (isPulling && pullCurrentY > 60) {
-        await fetchTodos();
-        hapticFeedback('success');
-      }
-      isPulling = false;
-      pullCurrentY = 0;
-      pullRefresh.classList.add('hidden');
-      pullRefresh.classList.remove('spinning');
-    });
-
-    // Modal functions
+        // Modal functions
     function openModal(id) {
       editingId = id;
       const todo = todos.find(t => t.id === id);
